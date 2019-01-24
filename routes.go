@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -10,12 +9,12 @@ import (
 )
 
 func setupRoutes(r *mux.Router) *mux.Router {
-	r.HandleFunc("/event", EventHandler).Methods("POST")
+	r.HandleFunc("/event", eventHandler).Methods("POST")
 
 	return r
 }
 
-func EventHandler(w http.ResponseWriter, r *http.Request) {
+func eventHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var offlineEvent common.OfflineEvent
 
@@ -23,5 +22,7 @@ func EventHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("Recieved date: %v", offlineEvent.Date)
+
+	GetLogger().Tracef("Queueing event for processing: %+v", offlineEvent)
+	GetExecutor().QueueTask(RawEvent, offlineEvent)
 }

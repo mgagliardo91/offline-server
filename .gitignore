@@ -13,3 +13,4 @@
 vendor/
 .vscode/
 debug
+offline-server

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,14 +13,20 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	RawEvent blacksmith.TaskName = iota
+)
+
 var (
 	maxWorkers      = utils.GetEnvInt("MAX_WORKERS", 10)
 	gracefulTimeout = utils.GetEnvDuration("SERVER_GRACEFUL_TIMEOUT", 1*time.Minute)
 )
 
-var eventExecutor blacksmith.Blacksmith
+var eventExecutor *blacksmith.Blacksmith
+var logger *utils.LogWrapper
 
 func main() {
+	utils.SetLoggerLevel(blacksmith.LoggerName, "info")
 	router := createRouter()
 	server := &http.Server{
 		Handler:      router,
@@ -30,15 +35,15 @@ func main() {
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 	}
+	GetExecutor().Run()
 
-	eventExecutor := blacksmith.New(maxWorkers)
-	eventExecutor.Run()
-
-	log.Println("Starting the server...")
+	GetLogger().Infof("Server starting at %s", server.Addr)
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			log.Println(err)
+			GetLogger().Errorln(err)
+			return
 		}
+
 	}()
 
 	c := make(chan os.Signal, 1)
@@ -48,14 +53,31 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulTimeout)
 	defer cancel()
 
-	eventExecutor.Stop()
+	GetExecutor().Stop()
 
 	server.Shutdown(ctx)
-	log.Println("Shutting down...")
+	GetLogger().Info("Shutting down...")
 	os.Exit(0)
 }
 
 func createRouter() *mux.Router {
 	r := mux.NewRouter()
 	return setupRoutes(r)
+}
+
+func GetExecutor() *blacksmith.Blacksmith {
+	if eventExecutor == nil {
+		eventExecutor = blacksmith.New(maxWorkers)
+		eventExecutor.SetHandler(RawEvent, processRawEvent)
+	}
+
+	return eventExecutor
+}
+
+func GetLogger() *utils.LogWrapper {
+	if logger == nil {
+		logger = utils.NewLogger("Server")
+	}
+
+	return logger
 }
