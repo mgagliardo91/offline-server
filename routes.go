@@ -16,7 +16,7 @@ func setupRoutes(r *mux.Router) *mux.Router {
 
 func eventHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var offlineEvent common.OfflineEvent
+	var offlineEvent common.RawOfflineEvent
 
 	err := decoder.Decode(&offlineEvent)
 	if err != nil {
