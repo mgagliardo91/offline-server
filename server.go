@@ -26,6 +26,10 @@ var eventExecutor *blacksmith.Blacksmith
 var logger *utils.LogWrapper
 
 func main() {
+	initClient()
+	if err := ensureIndices(); err != nil {
+		logger.Errorf("Unable to ensure indices: %s", err)
+	}
 	utils.SetLoggerLevel(blacksmith.LoggerName, "info")
 	router := createRouter()
 	server := &http.Server{

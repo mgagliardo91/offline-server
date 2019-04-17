@@ -12,7 +12,7 @@ import (
 	"github.com/mgagliardo91/go-utils"
 
 	"github.com/mgagliardo91/blacksmith"
-	"github.com/mgagliardo91/offline-common"
+	common "github.com/mgagliardo91/offline-common"
 
 	geo "github.com/martinlindhe/google-geolocate"
 )
@@ -57,12 +57,16 @@ func processRawEvent(task blacksmith.Task) {
 
 	events := createEventsForEachOccurrence(event, &rawEvent)
 
+	for _, event := range events {
+		indexDocument(event)
+	}
+
 	jsonValue, _ := json.Marshal(events)
 	GetLogger().Infof("%s", jsonValue)
 }
 
-func createEventsForEachOccurrence(event *common.OfflineEvent, rawEvent *common.RawOfflineEvent) (events []*common.OfflineEvent) {
-	events = make([]*common.OfflineEvent, 0)
+func createEventsForEachOccurrence(event *OfflineEventDocument, rawEvent *common.RawOfflineEvent) (events []*OfflineEventDocument) {
+	events = make([]*OfflineEventDocument, 0)
 	useFixedTimes := false
 
 	mainStartTime, mainEndTime := cleanTimeRange(getParams(extractTimeRange, rawEvent.TimeRaw))
@@ -74,7 +78,7 @@ func createEventsForEachOccurrence(event *common.OfflineEvent, rawEvent *common.
 
 	for _, dateTime := range dateTimes {
 		var start, end time.Time
-		eventInstance := common.OfflineEvent(*event)
+		eventInstance := OfflineEventDocument(*event)
 		GetLogger().Infof("Processing date with epoch value: %d", utils.TimeToMilis(*dateTime.date))
 
 		if useFixedTimes {
@@ -94,19 +98,22 @@ func createEventsForEachOccurrence(event *common.OfflineEvent, rawEvent *common.
 	return
 }
 
-func generateUniqueID(event *common.OfflineEvent) {
+func generateUniqueID(event *OfflineEventDocument) {
 	event.ID = fmt.Sprintf("%s:%d:%d", event.EventID, event.StartDateTime, event.EndDateTime)
 }
 
-func cleanRawEvent(rawEvent *common.RawOfflineEvent) (event *common.OfflineEvent, err error) {
-	event = &common.OfflineEvent{
-		Description:  rawEvent.Description,
-		EventURL:     rawEvent.EventURL,
-		ImageURL:     rawEvent.ImageURL,
-		ReferralURLs: rawEvent.ReferralURLs,
-		Tags:         make([]string, 0),
-		Teaser:       rawEvent.Teaser,
-		Title:        rawEvent.Title,
+func cleanRawEvent(rawEvent *common.RawOfflineEvent) (event *OfflineEventDocument, err error) {
+	event = &OfflineEventDocument{
+		DocumentImpl{},
+		common.OfflineEvent{
+			Description:  rawEvent.Description,
+			EventURL:     rawEvent.EventURL,
+			ImageURL:     rawEvent.ImageURL,
+			ReferralURLs: rawEvent.ReferralURLs,
+			Tags:         make([]string, 0),
+			Teaser:       rawEvent.Teaser,
+			Title:        rawEvent.Title,
+		},
 	}
 
 	event.Price = cleanPrice(rawEvent)
@@ -116,7 +123,7 @@ func cleanRawEvent(rawEvent *common.RawOfflineEvent) (event *common.OfflineEvent
 	return
 }
 
-func cleanEventUrl(event *common.OfflineEvent, url string) error {
+func cleanEventUrl(event *OfflineEventDocument, url string) error {
 	if index := strings.IndexByte(url, '?'); index >= 0 {
 		event.OfflineURL = url[:index]
 	} else {
@@ -138,7 +145,7 @@ func cleanEventUrl(event *common.OfflineEvent, url string) error {
 	return nil
 }
 
-func cleanLocation(event *common.OfflineEvent, addressRaw string) {
+func cleanLocation(event *OfflineEventDocument, addressRaw string) {
 	res, err := client.Geocode(addressRaw)
 
 	if err != nil {
@@ -146,8 +153,10 @@ func cleanLocation(event *common.OfflineEvent, addressRaw string) {
 		return
 	}
 
-	event.Latitude = res.Lat
-	event.Longitude = res.Lng
+	event.Location = common.Location{
+		Latitude:  res.Lat,
+		Longitude: res.Lng,
+	}
 	event.Address = res.Address
 }
 
