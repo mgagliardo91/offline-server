@@ -26,10 +26,16 @@ var eventExecutor *blacksmith.Blacksmith
 var logger *utils.LogWrapper
 
 func main() {
-	initClient()
-	if err := ensureIndices(); err != nil {
-		logger.Errorf("Unable to ensure indices: %s", err)
+	if err := initClient(); err != nil {
+		GetLogger().Fatalf("Unable to initialize Elastic Search. %s", err)
+		return
 	}
+
+	if err := ensureIndices(); err != nil {
+		GetLogger().Fatalf("Unable to ensure indices: %s", err)
+		return
+	}
+
 	utils.SetLoggerLevel(blacksmith.LoggerName, "info")
 	router := createRouter()
 	server := &http.Server{
