@@ -40,7 +40,7 @@ func main() {
 	router := createRouter()
 	server := &http.Server{
 		Handler:      router,
-		Addr:         "localhost:3000",
+		Addr:         ":3000",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -48,6 +47,8 @@ func processRawEvent(task blacksmith.Task) {
 		return
 	}
 
+	GetLogger().Infof("Processing raw event with title: %s", rawEvent.Title)
+
 	event, err := cleanRawEvent(&rawEvent)
 
 	if err != nil {
@@ -61,8 +62,7 @@ func processRawEvent(task blacksmith.Task) {
 		indexDocument(event)
 	}
 
-	jsonValue, _ := json.Marshal(events)
-	GetLogger().Infof("%s", jsonValue)
+	GetLogger().Infof("Published %d occurrence(s) for event with ID: %s", len(events), event.EventID)
 }
 
 func createEventsForEachOccurrence(event *OfflineEventDocument, rawEvent *common.RawOfflineEvent) (events []*OfflineEventDocument) {
@@ -79,7 +79,6 @@ func createEventsForEachOccurrence(event *OfflineEventDocument, rawEvent *common
 	for _, dateTime := range dateTimes {
 		var start, end time.Time
 		eventInstance := OfflineEventDocument(*event)
-		GetLogger().Infof("Processing date with epoch value: %d", utils.TimeToMilis(*dateTime.date))
 
 		if useFixedTimes {
 			start = dateTime.date.Add(time.Duration(*mainStartTime) * time.Millisecond)
